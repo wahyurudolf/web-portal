@@ -1,0 +1,70 @@
+@import "tailwindcss";
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Definisi warna yang konsisten */
+  --light-bg: #f8fafc; /* slate-50 */
+  --light-fg: #0f172a; /* slate-900 */
+  --dark-bg: #020817;  /* Latar gelap */
+  --dark-fg: #f1f5f9;  /* slate-100 */
+
+  /* Warna default (Mode Terang) */
+  --foreground: var(--light-fg);
+}
+
+.dark {
+  /* Warna saat Mode Gelap aktif */
+  --foreground: var(--dark-fg);
+}
+
+@theme inline {
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* IMPLEMENTASI TRANSISI MATAHARI TERBIT/TENGGELAM */
+body {
+  min-height: 100vh;
+  /* Pastikan warna teks juga bertransisi halus */
+  color: var(--foreground);
+
+  /*
+    Trik Kunci:
+    Membuat latar belakang gradient linear vertikal.
+    50% bagian atas adalah warna GELAP.
+    50% bagian bawah adalah warna TERANG.
+  */
+  background-image: linear-gradient(
+    to bottom,
+    var(--dark-bg) 50%,
+    var(--light-bg) 50%
+  );
+
+  /* Membuat ukuran background 2x lipat tinggi layar */
+  background-size: 100% 200%;
+
+  /*
+    Posisi Awal (Mode Terang):
+    Geser background ke paling bawah (100%), sehingga yang terlihat adalah bagian TERANG.
+  */
+  background-position: 0% 100%;
+
+  /*
+    Animasi Transisi:
+    Kita gunakan durasi agak lama (0.7s) dan timing function 'cubic-bezier'
+    agar gerakannya terasa lebih dramatis dan mewah daripada 'ease-in-out' biasa.
+  */
+  transition: background-position 0.7s cubic-bezier(0.4, 0.0, 0.2, 1), color 0.7s ease;
+}
+
+/* Saat next-themes menambahkan class .dark pada tag HTML */
+.dark body {
+  /*
+    Posisi Mode Gelap:
+    Geser background ke paling atas (0%), sehingga yang terlihat adalah bagian GELAP.
+    Ini menciptakan efek "Matahari Tenggelam" (gelap turun dari atas).
+    Sebaliknya, saat class .dark hilang, ia akan kembali ke bawah ("Matahari Terbit").
+  */
+  background-position: 0% 0%;
+}
