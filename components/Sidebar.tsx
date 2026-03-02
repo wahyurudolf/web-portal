@@ -13,7 +13,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Moon,
-  Sun
+  Sun,
+  ShieldAlert
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -30,6 +31,7 @@ export default function Sidebar() {
     { name: "Direktori Web", icon: Network, path: "/directory" },
     { name: "Dokumen", icon: Files, path: "/docs" },
     { name: "Pengaturan", icon: Settings, path: "/settings" },
+    { name: "Panel Admin", icon: ShieldAlert, path: "/admin" },
   ];
 
   return (
