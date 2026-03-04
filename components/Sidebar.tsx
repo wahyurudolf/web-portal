@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
+import Image from "next/image";
 import { 
   LayoutDashboard, 
   Network, 
@@ -12,8 +11,6 @@ import {
   Settings, 
   ChevronLeft,
   ChevronRight,
-  Moon,
-  Sun,
   ShieldAlert
 } from "lucide-react";
 
@@ -21,18 +18,15 @@ export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
 
-  // Menghindari hydration mismatch pada Next.js untuk Dark Mode
   useEffect(() => setMounted(true), []);
 
   const menuItems = [
-    { name: "Dashboard", icon: LayoutDashboard, path: "/" },
-    { name: "Direktori Web", icon: Network, path: "/directory" },
-    { name: "Dokumen", icon: Files, path: "/docs" },
-    { name: "Pengaturan", icon: Settings, path: "/settings" },
+    { name: "Dashboard", icon: LayoutDashboard, path: "/" },  
     { name: "Panel Admin", icon: ShieldAlert, path: "/admin" },
   ];
+
+  if (!mounted) return null;
 
   return (
     <aside 
@@ -42,38 +36,49 @@ export default function Sidebar() {
         dark:bg-[#0f172a] dark:border-slate-800
       `}
     >
-      {/* Tombol Toggle Buka/Tutup (Posisi Memotong Border) */}
       <button 
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3.5 top-9 flex h-7 w-7 items-center justify-center rounded-full border shadow-sm transition-all hover:scale-110 
-          bg-white border-slate-200 text-slate-600 hover:text-teal-600
-          dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:text-teal-400"
+        className="absolute -right-4 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full border bg-white shadow-md transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-4 focus:ring-teal-500/20 group z-50
+          border-slate-200 text-slate-400 hover:border-teal-500 hover:bg-teal-50 hover:text-teal-600
+          dark:bg-[#0f172a] dark:border-slate-700 dark:text-slate-500 dark:hover:border-teal-400 dark:hover:bg-teal-500/10 dark:hover:text-teal-400"
+        title={isCollapsed ? "Perluas Sidebar" : "Sembunyikan Sidebar"}
       >
-        {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        {isCollapsed ? (
+          <ChevronRight size={18} strokeWidth={2.5} className="transition-transform duration-300 group-hover:translate-x-0.5" />
+        ) : (
+          <ChevronLeft size={18} strokeWidth={2.5} className="transition-transform duration-300 group-hover:-translate-x-0.5" />
+        )}
       </button>
-
-      {/* Area Logo (Mendukung Gambar 1:1) */}
-      <div className="h-24 flex items-center justify-center border-b border-slate-200 dark:border-slate-800 px-4">
+      {/* Area Logo & Nama Instansi */}
+      <div className="h-20 shrink-0 flex items-center justify-center border-b border-slate-200 dark:border-slate-800 px-4">
         <div className={`flex items-center gap-3 w-full ${isCollapsed ? "justify-center" : "justify-start"} overflow-hidden`}>
-          {/* Ganti src="/logo.png" dengan nama file gambar Anda di folder public */}
-          <div className="relative h-10 w-10 min-w-10 rounded-xl overflow-hidden bg-white shadow-sm border border-slate-100 dark:border-slate-700 shrink-0">
-            <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-xs font-bold">
-              1:1 {/* Hapus teks ini jika gambar sudah ada */}
-            </div>
-            {/* Hapus komentar pada kode Image di bawah jika gambar sudah dimasukkan ke folder public */}
-            {/* <Image src="/logo.png" alt="Logo Instansi" fill className="object-cover" /> */}
+          
+          {/* LOGO: Kualitas 100% dan Proporsional */}
+          <div className="relative h-10 w-10 min-w-10 rounded-xl overflow-hidden shadow-sm border-slate-100 dark:border-slate-700 shrink-0 flex items-center justify-center">
+            <Image 
+              src="/logopln.jpg" 
+              alt="Logo Portal"
+              fill
+              quality={100} /* Memaksa Next.js menggunakan resolusi tertinggi */
+              className="object-contain p-1" /* object-contain mencegah gambar terpotong/meregang, p-1 memberi sedikit ruang bernapas */
+            />
           </div>
           
           {!isCollapsed && (
-            <div className="flex flex-col whitespace-nowrap animate-in fade-in duration-300">
+            <div className="flex flex-col animate-in fade-in duration-300 overflow-hidden w-full">
               <span className="text-lg font-bold text-slate-800 dark:text-white tracking-tight">Portal <span className="text-teal-600 dark:text-teal-400">Utama</span></span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Sistem Informasi</span>
+              
+              {/* TEKS BERJALAN: Dibungkus dengan w-full dan overflow-hidden */}
+              <div className="w-full overflow-hidden relative">
+                <span className="inline-block text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold whitespace-nowrap animate-slide-text">
+                  PT PLN Indonesia Power - UBP Suralaya
+                </span>
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Menu Navigasi */}
       <nav className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
         {menuItems.map((item) => {
           const isActive = pathname === item.path;
@@ -84,11 +89,9 @@ export default function Sidebar() {
                   ? "bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400" 
                   : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200"
               }`}>
-                {/* Indikator aktif di sebelah kiri */}
                 {isActive && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-teal-500 rounded-r-md" />
                 )}
-                
                 <item.icon size={20} className={isActive ? "" : "group-hover:scale-110 transition-transform"} />
                 {!isCollapsed && <span className="font-medium whitespace-nowrap">{item.name}</span>}
               </div>
@@ -97,26 +100,8 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer Sidebar: Dark Mode & Latency */}
       <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-4">
-        
-        {/* Toggle Dark Mode */}
-        {mounted && (
-          <button 
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors w-full
-              ${isCollapsed ? "justify-center" : "justify-start"}
-              text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50`
-            }
-          >
-            {theme === "dark" ? <Sun size={20} className="text-amber-400" /> : <Moon size={20} />}
-            {!isCollapsed && <span className="font-medium text-sm">Mode {theme === "dark" ? "Terang" : "Gelap"}</span>}
-          </button>
-        )}
-
-        {/* Indikator Latency */}
-        <div className={`flex items-center gap-3 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/50
-          ${isCollapsed ? "justify-center" : "justify-start"}`}>
+        <div className={`flex items-center gap-3 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/50 ${isCollapsed ? "justify-center" : "justify-start"}`}>
           <div className="relative flex h-2.5 w-2.5 shrink-0">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
@@ -128,7 +113,6 @@ export default function Sidebar() {
             </div>
           )}
         </div>
-
       </div>
     </aside>
   );

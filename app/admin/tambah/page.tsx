@@ -11,7 +11,7 @@ export default async function TambahAplikasiPage() {
 
   return (
     <div>
-      <AddAppForm divisions={divisions} />
+      <AddAppForm initialDivisions={divisions} />
     </div>
   );
 }

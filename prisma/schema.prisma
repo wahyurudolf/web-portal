@@ -4,7 +4,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Menggunakan SQLite untuk pengembangan lokal yang cepat
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
@@ -13,29 +12,37 @@ datasource db {
 // Tabel Utama: Daftar Aplikasi Portal
 model Application {
   id          String   @id @default(cuid())
-  name        String   // Nama aplikasi (Contoh: Sistem Manajemen Aset)
-  description String?  // Deskripsi opsional
-  url         String   // Link URL tujuan web
-  icon        String?  // Nama ikon (opsional, misal "wrench", "users")
+  name        String
+  description String?
+  url         String
 
-  // --- Konfigurasi Tampilan Card ---
-  bgType      String   @default("COLOR") // Pilihan: "COLOR" atau "IMAGE"
-  bgValue     String   // Berisi kode Hex (misal: #ffffff) ATAU path gambar (/uploads/bg-1.jpg)
-  textColor   String   @default("DARK")  // Pilihan: "LIGHT" (putih) atau "DARK" (hitam/gelap)
+  // --- Konfigurasi Ikon Baru ---
+  iconType    String   @default("SVG") // Pilihan: "SVG" atau "IMAGE"
+  iconValue   String?  // Berisi teks <svg>...</svg> ATAU data URL base64 gambar 
 
-  // --- Relasi Lintas Divisi (Many-to-Many) ---
-  // Satu aplikasi bisa digunakan banyak divisi, satu divisi bisa punya banyak aplikasi
+  // --- Relasi Kategori (One-to-Many) ---
+  // Satu aplikasi hanya punya 1 kategori, tapi 1 kategori bisa punya banyak aplikasi
+  categories  Category[]
+
+  // --- Relasi Divisi (Many-to-Many) ---
   divisions   Division[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
+// Tabel Master: Daftar Kategori (Baru)
+model Category {
+  id          String        @id @default(cuid())
+  name        String        @unique // Contoh: "Operasional", "IT"
+  
+  apps        Application[]
+}
+
 // Tabel Master: Daftar Divisi/Bagian
 model Division {
   id          String        @id @default(cuid())
-  name        String        @unique // Contoh: "Operasional", "IT", "SDM", "Keuangan"
+  name        String        @unique // Contoh: "Rendiklat", "Pemeliharaan"
   
-  // Relasi balik ke tabel Aplikasi
   apps        Application[]
 }

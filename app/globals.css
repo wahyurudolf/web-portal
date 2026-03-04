@@ -68,3 +68,14 @@ body {
   */
   background-position: 0% 0%;
 }
+
+/* Animasi untuk teks instansi yang panjang */
+@keyframes slide-text {
+  0%, 15% { transform: translateX(0); }
+  45%, 55% { transform: translateX(-45%); } /* Sesuaikan angka -45% ini jika teks masih kurang tergeser */
+  85%, 100% { transform: translateX(0); }
+}
+
+.animate-slide-text {
+  animation: slide-text 8s ease-in-out infinite;
+}

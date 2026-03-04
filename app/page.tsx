@@ -11,6 +11,7 @@ export default async function DashboardPage() {
   const apps = await prisma.application.findMany({
     include: {
       divisions: true, 
+      categories: true,
     },
     orderBy: {
       createdAt: 'desc' // Mengurutkan dari yang terbaru
