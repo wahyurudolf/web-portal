@@ -4,11 +4,44 @@ import { useState, useCallback, useRef } from "react";
 import Cropper, { Area } from "react-easy-crop";
 import { ExternalLink, Save, ArrowLeft, UploadCloud, Image as ImageIcon, Code, Plus, Edit2, Trash2, LayoutGrid, Pin } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createApplication } from "../app/actions/appActions";
 
 type Division = { id: string; name: string };
 type Category = { id: string; name: string };
 
-export default function AddAppForm({ initialDivisions }: { initialDivisions: Division[] }) {
+// --- FUNGSI BARU: Mengubah area potongan menjadi Base64 Permanen ---
+const getCroppedImg = async (imageSrc: string, pixelCrop: Area): Promise<string> => {
+  const image = new window.Image();
+  image.src = imageSrc;
+  await new Promise((resolve) => (image.onload = resolve));
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
+  );
+
+  return canvas.toDataURL("image/png"); // Mengembalikan teks Base64
+};
+
+export default function AddAppForm({ initialDivisions, initialCategories }: { initialDivisions: Division[], initialCategories: Category[] }) {
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [url, setUrl] = useState("");
@@ -19,27 +52,33 @@ export default function AddAppForm({ initialDivisions }: { initialDivisions: Div
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const [croppedPixels, setCroppedPixels] = useState<Area | null>(null); // State baru untuk menyimpan koordinat
   const [finalImage, setFinalImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const onCropComplete = useCallback((_: Area, px: Area) => {
-    return px;
+    setCroppedPixels(px); // Simpan koordinat saat digeser
   }, []);
 
-  // State Divisi & Kategori
+  // --- FUNGSI BARU: Tombol Simpan Potongan ---
+  const handleSaveCrop = async () => {
+    if (imageSrc && croppedPixels) {
+      const base64Image = await getCroppedImg(imageSrc, croppedPixels);
+      setFinalImage(base64Image); // Simpan Base64 permanen
+      setImageSrc(null);
+    }
+  };
+
   const [divisions, setDivisions] = useState<Division[]>(initialDivisions);
   const [selectedDivs, setSelectedDivs] = useState<string[]>([]);
   const [newDivInput, setNewDivInput] = useState("");
   const [isEditingDiv, setIsEditingDiv] = useState(false);
 
-  const [categories, setCategories] = useState<Category[]>([
-    { id: "c1", name: "Operasional" }, { id: "c2", name: "SDM" }, { id: "c3", name: "IT" }
-  ]);
+  const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [newCatInput, setNewCatInput] = useState("");
   const [isEditingCat, setIsEditingCat] = useState(false);
 
-  // --- HANDLER GAMBAR ---
   const onFileChange = async (e: any) => {
     if (e.target.files && e.target.files.length > 0) {
       setImageSrc(URL.createObjectURL(e.target.files[0]));
@@ -58,7 +97,6 @@ export default function AddAppForm({ initialDivisions }: { initialDivisions: Div
     }
   };
 
-  // --- HANDLER DIVISI ---
   const toggleDivision = (id: string) => {
     if (id === "ALL") {
       setSelectedDivs(selectedDivs.includes("ALL") ? [] : ["ALL"]);
@@ -87,7 +125,6 @@ export default function AddAppForm({ initialDivisions }: { initialDivisions: Div
     setSelectedDivs(selectedDivs.filter(d => d !== id));
   };
 
-  // --- HANDLER KATEGORI ---
   const toggleCategory = (id: string) => {
     setSelectedCategories(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
   };
@@ -108,10 +145,52 @@ export default function AddAppForm({ initialDivisions }: { initialDivisions: Div
     setSelectedCategories(selectedCategories.filter(c => c !== id));
   };
 
+  const handleSubmit = async () => {
+    if (!name || !url || selectedCategories.length === 0 || selectedDivs.length === 0) {
+      alert("Mohon lengkapi Nama, URL, Kategori, dan Divisi terlebih dahulu.");
+      return;
+    }
+    
+    let finalIconValue = "";
+    if (iconMode === "SVG") {
+      if (!svgInput) return alert("Kode SVG tidak boleh kosong");
+      finalIconValue = svgInput;
+    } else {
+      if (!finalImage) return alert("Mohon potong dan simpan gambar terlebih dahulu");
+      finalIconValue = finalImage; // Sekarang ini berisi Base64 permanen
+    }
+
+    setIsSubmitting(true);
+
+    const selectedCatNames = categories.filter(c => selectedCategories.includes(c.id)).map(c => c.name);
+    let selectedDivNames = [];
+    if (selectedDivs.includes("ALL")) {
+      selectedDivNames = ["ALL"];
+    } else {
+      selectedDivNames = divisions.filter(d => selectedDivs.includes(d.id)).map(d => d.name);
+    }
+
+    const result = await createApplication({
+      name,
+      description: desc,
+      url,
+      iconType: iconMode,
+      iconValue: finalIconValue,
+      categoryNames: selectedCatNames,
+      divisionNames: selectedDivNames
+    });
+
+    if (result.success) {
+      router.push("/admin"); 
+    } else {
+      alert("Gagal: " + result.error);
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500" onPaste={handlePaste}>
       
-      {/* KIRI: Form Input */}
       <div className="lg:col-span-2 space-y-8 bg-white dark:bg-[#0f172a] p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-500">
         
         <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
@@ -122,7 +201,6 @@ export default function AddAppForm({ initialDivisions }: { initialDivisions: Div
         </div>
 
         <div className="space-y-5">
-          {/* Input Dasar */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 transition-colors">Nama Aplikasi</label>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Contoh: Absensi" className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#020817] text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none transition-colors duration-300" />
@@ -136,7 +214,6 @@ export default function AddAppForm({ initialDivisions }: { initialDivisions: Div
             <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={2} placeholder="Fungsi utama aplikasi ini..." className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#020817] text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none transition-colors duration-300" />
           </div>
 
-          {/* INPUT IKON */}
           <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/20 transition-colors duration-500">
             <div className="flex items-center justify-between mb-4">
               <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 transition-colors">Ikon Aplikasi</label>
@@ -155,7 +232,7 @@ export default function AddAppForm({ initialDivisions }: { initialDivisions: Div
                     <Cropper image={imageSrc} crop={crop} zoom={zoom} aspect={1} onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} />
                     <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4 z-10">
                       <button onClick={() => setImageSrc(null)} type="button" className="px-4 py-2 bg-slate-800/80 text-white text-sm font-bold rounded-lg backdrop-blur hover:bg-red-500 transition-colors">Batal</button>
-                      <button onClick={() => { setFinalImage(imageSrc); setImageSrc(null); }} type="button" className="px-4 py-2 bg-teal-600/90 text-white text-sm font-bold rounded-lg backdrop-blur hover:bg-teal-500 transition-colors">Simpan Potongan (1:1)</button>
+                      <button onClick={handleSaveCrop} type="button" className="px-4 py-2 bg-teal-600/90 text-white text-sm font-bold rounded-lg backdrop-blur hover:bg-teal-500 transition-colors">Simpan Potongan (1:1)</button>
                     </div>
                   </div>
                 ) : (
@@ -175,7 +252,6 @@ export default function AddAppForm({ initialDivisions }: { initialDivisions: Div
             )}
           </div>
 
-          {/* KATEGORI DINAMIS */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 transition-colors">Kategori Aplikasi</label>
@@ -183,7 +259,6 @@ export default function AddAppForm({ initialDivisions }: { initialDivisions: Div
                 {isEditingCat ? "Selesai Edit" : <><Edit2 size={12}/> Edit Kategori</>}
               </button>
             </div>
-            
             <div className="flex flex-wrap gap-2 mb-3">
               {categories.map((cat) => (
                 isEditingCat ? (
@@ -199,7 +274,6 @@ export default function AddAppForm({ initialDivisions }: { initialDivisions: Div
                 )
               ))}
             </div>
-            
             {!isEditingCat && (
               <div className="flex items-center gap-2 mt-2">
                 <input type="text" value={newCatInput} onChange={(e) => setNewCatInput(e.target.value)} placeholder="Tambah kategori baru..." className="flex-1 px-4 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#020817] text-slate-900 dark:text-white focus:outline-none focus:border-teal-500 transition-colors" />
@@ -208,7 +282,6 @@ export default function AddAppForm({ initialDivisions }: { initialDivisions: Div
             )}
           </div>
 
-          {/* DIVISI DINAMIS */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 transition-colors">Akses Divisi Pengguna</label>
@@ -216,7 +289,6 @@ export default function AddAppForm({ initialDivisions }: { initialDivisions: Div
                 {isEditingDiv ? "Selesai Edit" : <><Edit2 size={12}/> Edit Divisi</>}
               </button>
             </div>
-            
             <div className="flex flex-wrap gap-2 mb-3">
               {!isEditingDiv && (
                  <label className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all ${selectedDivs.includes("ALL") ? 'bg-indigo-50 border-indigo-500 text-indigo-700 dark:bg-indigo-500/10 dark:border-indigo-400 dark:text-indigo-300 shadow-sm font-bold' : 'bg-white border-slate-200 text-slate-600 dark:bg-slate-800/50 dark:border-slate-700 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
@@ -224,7 +296,6 @@ export default function AddAppForm({ initialDivisions }: { initialDivisions: Div
                    <span className="text-sm">Semua Divisi</span>
                  </label>
               )}
-
               {divisions.map((div) => (
                 isEditingDiv ? (
                   <div key={div.id} className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors">
@@ -239,7 +310,6 @@ export default function AddAppForm({ initialDivisions }: { initialDivisions: Div
                 )
               ))}
             </div>
-            
             {!isEditingDiv && (
               <div className="flex items-center gap-2 mt-2">
                 <input type="text" value={newDivInput} onChange={(e) => setNewDivInput(e.target.value)} placeholder="Tambah divisi baru..." className="flex-1 px-4 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#020817] text-slate-900 dark:text-white focus:outline-none focus:border-teal-500 transition-colors" />
@@ -250,21 +320,19 @@ export default function AddAppForm({ initialDivisions }: { initialDivisions: Div
         </div>
 
         <div className="pt-6 mt-6 border-t border-slate-100 dark:border-slate-800">
-          <button className="flex items-center justify-center w-full gap-2 bg-teal-600 hover:bg-teal-700 text-white px-6 py-3.5 rounded-xl font-bold transition-all shadow-md hover:shadow-lg">
-            <Save size={20} /> Simpan Data Aplikasi
+          <button onClick={handleSubmit} disabled={isSubmitting} className={`flex items-center justify-center w-full gap-2 text-white px-6 py-3.5 rounded-xl font-bold transition-all shadow-md ${isSubmitting ? 'bg-slate-400 cursor-not-allowed' : 'bg-teal-600 hover:bg-teal-700 hover:shadow-lg'}`}>
+            {isSubmitting ? <span className="animate-pulse">Menyimpan ke Database...</span> : <><Save size={20} /> Simpan Data Aplikasi</>}
           </button>
         </div>
       </div>
 
-      {/* KANAN: Live Preview Card (Disinkronkan dengan UI terbaru) */}
       <div className="lg:col-span-1">
         <div className="sticky top-28 space-y-4">
           <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Live Preview Card</h3>
           
           <div className="group p-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 flex flex-col h-64 relative overflow-hidden bg-white dark:bg-[#0f172a] hover:-translate-y-1 border border-slate-200/50 dark:border-slate-700/50">
             <div className="flex items-start justify-between mb-4 relative z-10">
-              
-              <div className="p-3 rounded-xl shadow-sm border flex items-center justify-center w-12 h-12 overflow-hidden transition-colors duration-300 group-hover:scale-110 bg-slate-50 dark:bg-[#020817] border-slate-100 dark:border-slate-800">
+              <div className="rounded-xl shadow-sm border flex items-center justify-center w-12 h-12 overflow-hidden transition-colors duration-300 group-hover:scale-110 bg-slate-50 dark:bg-[#020817] border-slate-100 dark:border-slate-800">
                 {iconMode === "SVG" && svgInput ? (
                   <div dangerouslySetInnerHTML={{ __html: svgInput }} className="w-6 h-6 fill-current stroke-current text-slate-700 dark:text-slate-200" />
                 ) : iconMode === "IMAGE" && finalImage ? (
@@ -273,8 +341,6 @@ export default function AddAppForm({ initialDivisions }: { initialDivisions: Div
                   <LayoutGrid className="h-6 w-6 text-slate-400" />
                 )}
               </div>
-              
-              {/* Mengganti Tag Kategori/Divisi dengan Ikon Pin Statis */}
               <button type="button" className="p-2 rounded-lg transition-colors text-slate-300 dark:text-slate-600">
                 <Pin size={18} />
               </button>
@@ -288,12 +354,10 @@ export default function AddAppForm({ initialDivisions }: { initialDivisions: Div
                 {desc || "Deskripsi aplikasi akan tampil di sini..."}
               </p>
             </div>
-
             <div className="relative z-10 mt-6 flex items-center text-sm font-bold text-teal-600 dark:text-teal-400 opacity-0 group-hover:opacity-100 transition-all duration-300 -translate-x-2 group-hover:translate-x-0">
               Buka Aplikasi <ExternalLink className="ml-1 h-4 w-4" />
             </div>
           </div>
-
         </div>
       </div>
 

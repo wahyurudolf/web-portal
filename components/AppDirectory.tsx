@@ -136,7 +136,7 @@ export default function AppDirectory({ apps }: { apps: Application[] }) {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 relative z-0">
       
-      {/* ... (Header dan Filter Section Tetap Sama) ... */}
+      {/* ... (Header dan Filter Section) ... */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#0f172a] p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-500">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white transition-colors">Direktori Aplikasi</h2>
@@ -177,7 +177,7 @@ export default function AppDirectory({ apps }: { apps: Application[] }) {
                 className="group p-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 flex flex-col h-full relative overflow-hidden bg-white dark:bg-[#0f172a] hover:-translate-y-1 border border-slate-200/50 dark:border-slate-700/50"
               >
                 <div className="flex items-start justify-between mb-4 relative z-10">
-                  <div className="p-3 rounded-xl shadow-sm border flex items-center justify-center w-12 h-12 overflow-hidden transition-colors duration-300 group-hover:scale-110 bg-slate-50 dark:bg-[#020817] border-slate-100 dark:border-slate-800">
+                  <div className="rounded-xl shadow-sm border flex items-center justify-center w-12 h-12 overflow-hidden transition-colors duration-300 group-hover:scale-110 bg-slate-50 dark:bg-[#020817] border-slate-100 dark:border-slate-800">
                     {app.iconType === "SVG" && app.iconValue ? (
                       <div dangerouslySetInnerHTML={{ __html: app.iconValue }} className="w-6 h-6 fill-current stroke-current text-slate-700 dark:text-slate-200" />
                     ) : app.iconType === "IMAGE" && app.iconValue ? (

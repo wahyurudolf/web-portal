@@ -20,6 +20,8 @@ model Application {
   iconType    String   @default("SVG") // Pilihan: "SVG" atau "IMAGE"
   iconValue   String?  // Berisi teks <svg>...</svg> ATAU data URL base64 gambar 
 
+  order       Int      @default(0)
+
   // --- Relasi Kategori (One-to-Many) ---
   // Satu aplikasi hanya punya 1 kategori, tapi 1 kategori bisa punya banyak aplikasi
   categories  Category[]
