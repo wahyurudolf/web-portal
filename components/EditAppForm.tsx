@@ -5,12 +5,13 @@ import Cropper, { Area } from "react-easy-crop";
 import { ExternalLink, Save, ArrowLeft, UploadCloud, Image as ImageIcon, Code, Plus, Edit2, Trash2, LayoutGrid, Pin } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createApplication, deleteCategoryDb, deleteDivisionDb, updateCategoryDb, updateDivisionDb } from "../app/actions/appActions";
+import { updateApplication } from "../app/actions/appActions"; // Menggunakan fungsi Update
+import { deleteCategoryDb, deleteDivisionDb, updateCategoryDb, updateDivisionDb } from "../app/actions/appActions";
 
 type Division = { id: string; name: string };
 type Category = { id: string; name: string };
 
-// --- FUNGSI BARU: Mengubah area potongan menjadi Base64 Permanen ---
+// --- FUNGSI BASE64 ---
 const getCroppedImg = async (imageSrc: string, pixelCrop: Area): Promise<string> => {
   const image = new window.Image();
   image.src = imageSrc;
@@ -35,49 +36,52 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: Area): Promise<string>
     pixelCrop.height
   );
 
-  return canvas.toDataURL("image/png"); // Mengembalikan teks Base64
+  return canvas.toDataURL("image/png");
 };
 
-export default function AddAppForm({ initialDivisions, initialCategories }: { initialDivisions: Division[], initialCategories: Category[] }) {
+export default function EditAppForm({ appData, initialDivisions, initialCategories }: { appData: any, initialDivisions: Division[], initialCategories: Category[] }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [name, setName] = useState("");
-  const [desc, setDesc] = useState("");
-  const [url, setUrl] = useState("");
+  // MENGISI STATE DENGAN DATA DARI DATABASE (appData)
+  const [name, setName] = useState(appData.name);
+  const [desc, setDesc] = useState(appData.description || "");
+  const [url, setUrl] = useState(appData.url);
   
-  const [iconMode, setIconMode] = useState<"SVG" | "IMAGE">("SVG");
-  const [svgInput, setSvgInput] = useState("");
+  const [iconMode, setIconMode] = useState<"SVG" | "IMAGE">(appData.iconType);
+  const [svgInput, setSvgInput] = useState(appData.iconType === "SVG" ? appData.iconValue || "" : "");
+  const [finalImage, setFinalImage] = useState<string | null>(appData.iconType === "IMAGE" ? appData.iconValue : null);
   
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [croppedPixels, setCroppedPixels] = useState<Area | null>(null); // State baru untuk menyimpan koordinat
-  const [finalImage, setFinalImage] = useState<string | null>(null);
+  const [croppedPixels, setCroppedPixels] = useState<Area | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const onCropComplete = useCallback((_: Area, px: Area) => {
-    setCroppedPixels(px); // Simpan koordinat saat digeser
+    setCroppedPixels(px);
   }, []);
 
-  // --- FUNGSI BARU: Tombol Simpan Potongan ---
   const handleSaveCrop = async () => {
     if (imageSrc && croppedPixels) {
       const base64Image = await getCroppedImg(imageSrc, croppedPixels);
-      setFinalImage(base64Image); // Simpan Base64 permanen
+      setFinalImage(base64Image);
       setImageSrc(null);
     }
   };
 
   const [divisions, setDivisions] = useState<Division[]>(initialDivisions);
-  const [selectedDivs, setSelectedDivs] = useState<string[]>([]);
   const [newDivInput, setNewDivInput] = useState("");
   const [isEditingDiv, setIsEditingDiv] = useState(false);
 
   const [categories, setCategories] = useState<Category[]>(initialCategories);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [newCatInput, setNewCatInput] = useState("");
   const [isEditingCat, setIsEditingCat] = useState(false);
+
+  // LOGIKA PEMBACAAN CHECKBOX LAMA
+  const isAllDivs = appData.divisions.length === initialDivisions.length && initialDivisions.length > 0;
+  const [selectedDivs, setSelectedDivs] = useState<string[]>(isAllDivs ? ["ALL"] : appData.divisions.map((d: any) => d.id));
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(appData.categories.map((c: any) => c.id));
 
   const onFileChange = async (e: any) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -178,7 +182,7 @@ export default function AddAppForm({ initialDivisions, initialCategories }: { in
       finalIconValue = svgInput;
     } else {
       if (!finalImage) return alert("Mohon potong dan simpan gambar terlebih dahulu");
-      finalIconValue = finalImage; // Sekarang ini berisi Base64 permanen
+      finalIconValue = finalImage; 
     }
 
     setIsSubmitting(true);
@@ -191,7 +195,8 @@ export default function AddAppForm({ initialDivisions, initialCategories }: { in
       selectedDivNames = divisions.filter(d => selectedDivs.includes(d.id)).map(d => d.name);
     }
 
-    const result = await createApplication({
+    // MEMANGGIL FUNGSI UPDATE BUKAN CREATE
+    const result = await updateApplication(appData.id, {
       name,
       description: desc,
       url,
@@ -202,6 +207,7 @@ export default function AddAppForm({ initialDivisions, initialCategories }: { in
     });
 
     if (result.success) {
+      alert("Perubahan aplikasi berhasil disimpan!");
       router.push("/admin"); 
     } else {
       alert("Gagal: " + result.error);
@@ -218,7 +224,7 @@ export default function AddAppForm({ initialDivisions, initialCategories }: { in
           <Link href="/admin" className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
             <ArrowLeft size={20} className="text-slate-600 dark:text-slate-300" />
           </Link>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white transition-colors">Form Aplikasi</h2>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white transition-colors">Edit Aplikasi</h2>
         </div>
 
         <div className="space-y-5">
@@ -342,7 +348,7 @@ export default function AddAppForm({ initialDivisions, initialCategories }: { in
 
         <div className="pt-6 mt-6 border-t border-slate-100 dark:border-slate-800">
           <button onClick={handleSubmit} disabled={isSubmitting} className={`flex items-center justify-center w-full gap-2 text-white px-6 py-3.5 rounded-xl font-bold transition-all shadow-md ${isSubmitting ? 'bg-slate-400 cursor-not-allowed' : 'bg-teal-600 hover:bg-teal-700 hover:shadow-lg'}`}>
-            {isSubmitting ? <span className="animate-pulse">Menyimpan ke Database...</span> : <><Save size={20} /> Simpan Data Aplikasi</>}
+            {isSubmitting ? <span className="animate-pulse">Menyimpan Perubahan...</span> : <><Save size={20} /> Simpan Perubahan Data</>}
           </button>
         </div>
       </div>

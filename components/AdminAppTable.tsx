@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Edit, Trash2, ExternalLink, Code, Image as ImageIcon, GripVertical, Search, ChevronDown, AlertCircle } from "lucide-react";
-import { reorderApplications } from "../app/actions/appActions";
+import { reorderApplications, deleteApplication } from "../app/actions/appActions"; 
+import { useRouter } from "next/navigation"; 
 
 // --- KOMPONEN DROPDOWN KUSTOM ---
 interface DropdownProps {
@@ -46,10 +47,14 @@ function CustomDropdown({ value, onChange, options, placeholder }: DropdownProps
 
 // --- KOMPONEN UTAMA TABEL ADMIN ---
 export default function AdminAppTable({ initialApps }: { initialApps: any[] }) {
+  const router = useRouter(); 
   const [apps, setApps] = useState(initialApps);
   const [isSaving, setIsSaving] = useState(false);
 
-  // State Filter & Pencarian
+  useEffect(() => {
+    setApps(initialApps);
+  }, [initialApps]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [catFilter, setCatFilter] = useState("ALL");
   const [divFilter, setDivFilter] = useState("ALL");
@@ -57,11 +62,9 @@ export default function AdminAppTable({ initialApps }: { initialApps: any[] }) {
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
 
-  // Mengekstrak daftar unik Kategori & Divisi untuk Dropdown
   const uniqueCats = Array.from(new Map(initialApps.flatMap(a => a.categories).map((c: any) => [c.id, c])).values()) as {id: string, name: string}[];
   const uniqueDivs = Array.from(new Map(initialApps.flatMap(a => a.divisions).map((d: any) => [d.id, d])).values()) as {id: string, name: string}[];
 
-  // Logika Filter Dinamis
   const isFiltering = searchQuery !== "" || catFilter !== "ALL" || divFilter !== "ALL";
   
   const displayApps = apps.filter(app => {
@@ -71,7 +74,17 @@ export default function AdminAppTable({ initialApps }: { initialApps: any[] }) {
     return matchSearch && matchCat && matchDiv;
   });
 
-  // Handler Drag & Drop (Mati saat filter aktif)
+  const handleDelete = async (id: string, appName: string) => {
+    if (window.confirm(`Apakah Anda yakin ingin menghapus aplikasi "${appName}" secara permanen?`)) {
+      setIsSaving(true);
+      const result = await deleteApplication(id);
+      if (!result.success) {
+        alert(result.error);
+      }
+      setIsSaving(false);
+    }
+  };
+
   const handleDragStart = (e: React.DragEvent, index: number) => {
     if (isFiltering) return;
     dragItem.current = index;
@@ -106,10 +119,7 @@ export default function AdminAppTable({ initialApps }: { initialApps: any[] }) {
 
   return (
     <div className="space-y-4">
-      {/* FILTER BAR SECTION */}
       <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-[#0f172a] p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
-        
-        {/* Search Input */}
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-slate-400" />
@@ -122,19 +132,14 @@ export default function AdminAppTable({ initialApps }: { initialApps: any[] }) {
             className="block w-full pl-9 pr-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm bg-slate-50 dark:bg-[#020817] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-colors text-slate-900 dark:text-white"
           />
         </div>
-
-        {/* Dropdown Kategori */}
         <div className="flex-1 md:max-w-62.5">
           <CustomDropdown value={catFilter} onChange={setCatFilter} options={uniqueCats} placeholder="Semua Kategori" />
         </div>
-
-        {/* Dropdown Divisi */}
         <div className="flex-1 md:max-w-62.5">
           <CustomDropdown value={divFilter} onChange={setDivFilter} options={uniqueDivs} placeholder="Semua Divisi" />
         </div>
       </div>
 
-      {/* Peringatan jika filter aktif (Drag Drop mati) */}
       {isFiltering && (
         <div className="flex items-center gap-2 px-4 py-3 text-sm text-amber-700 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400 rounded-xl border border-amber-200 dark:border-amber-500/20">
           <AlertCircle size={16} />
@@ -142,19 +147,18 @@ export default function AdminAppTable({ initialApps }: { initialApps: any[] }) {
         </div>
       )}
 
-      {/* TABEL DATA */}
       <div className="bg-white dark:bg-[#0f172a] rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors relative">
         {isSaving && <div className="absolute top-0 left-0 w-full h-1 bg-teal-500 animate-pulse z-50"></div>}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse table-fixed min-w-200">
             <thead>
               <tr className="bg-slate-50 dark:bg-[#020817] border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-sm uppercase tracking-wider">
-                <th className="p-4 w-10 text-center"></th>
-                <th className="p-4 font-semibold">Aplikasi & Tautan</th>
-                <th className="p-4 font-semibold">Kategori</th>
-                <th className="p-4 font-semibold">Divisi Pengguna</th>
-                <th className="p-4 font-semibold text-right">Aksi</th>
+                <th className="p-4 w-12 text-center"></th>
+                <th className="p-4 font-semibold w-2/5">Aplikasi & Tautan</th>
+                <th className="p-4 font-semibold w-1/5">Kategori</th>
+                <th className="p-4 font-semibold w-1/5">Divisi Pengguna</th>
+                <th className="p-4 font-semibold w-24 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -162,7 +166,7 @@ export default function AdminAppTable({ initialApps }: { initialApps: any[] }) {
                 displayApps.map((app, index) => (
                   <tr 
                     key={app.id} 
-                    draggable={!isFiltering} // Hanya bisa ditarik jika tidak sedang difilter
+                    draggable={!isFiltering} 
                     onDragStart={(e) => handleDragStart(e, index)}
                     onDragEnter={(e) => handleDragEnter(e, index)}
                     onDragEnd={handleDragEnd}
@@ -172,15 +176,25 @@ export default function AdminAppTable({ initialApps }: { initialApps: any[] }) {
                     <td className={`p-4 transition-colors ${!isFiltering ? "text-slate-300 dark:text-slate-600 group-hover:text-teal-500" : "text-slate-200 dark:text-slate-800/50 cursor-not-allowed"}`}>
                       <GripVertical size={20} />
                     </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <span title={`Ikon: ${app.iconType}`} className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded-md text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                    <td className="p-4 overflow-hidden">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span title={`Ikon: ${app.iconType}`} className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded-md text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shrink-0">
                           {app.iconType === "SVG" ? <Code size={14} /> : <ImageIcon size={14} />}
                         </span>
-                        <div className="font-bold text-slate-800 dark:text-white">{app.name}</div>
+                        {/* Nama Aplikasi dengan Truncate */}
+                        <div className="font-bold text-slate-800 dark:text-white truncate" title={app.name}>{app.name}</div>
                       </div>
-                      <a href={app.url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 dark:text-teal-400 flex items-center gap-1 mt-1.5 ml-8 hover:underline">
-                        {app.url} <ExternalLink size={12} />
+                      
+                      {/* URL DENGAN TRUNCATE & TOOLTIP */}
+                      <a 
+                        href={app.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        title={app.url} // Tooltip bawaan browser untuk melihat teks lengkap
+                        className="text-xs text-teal-600 dark:text-teal-400 flex items-center gap-1 ml-8 hover:underline w-fit max-w-full"
+                      >
+                        <span className="truncate max-w-50 md:max-w-62.5 lg:max-w-87.5">{app.url}</span>
+                        <ExternalLink size={12} className="shrink-0" />
                       </a>
                     </td>
                     <td className="p-4">
@@ -203,10 +217,18 @@ export default function AdminAppTable({ initialApps }: { initialApps: any[] }) {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 transition-colors">
+                        <button 
+                          onClick={() => router.push(`/admin/edit/${app.id}`)}
+                          title="Edit Aplikasi"
+                          className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 transition-colors"
+                        >
                           <Edit size={16} />
                         </button>
-                        <button className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 transition-colors">
+                        <button 
+                          onClick={() => handleDelete(app.id, app.name)}
+                          title="Hapus Aplikasi"
+                          className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 transition-colors"
+                        >
                           <Trash2 size={16} />
                         </button>
                       </div>
